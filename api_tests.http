@@ -1,0 +1,16 @@
+### Search image from PhyloPic API
+GET https://api.phylopic.org/images?filter_name=bufo%20bufo
+Accept: application/vnd.phylopic.v2+json
+
+### Get image from PhyloPic API
+GET https://api.phylopic.org/images?build=441&embed_items=true&embed_primaryImage=true&filter_name=bufo%20bufo&page=0
+Accept: application/vnd.phylopic.v2+json
+
+GET https://www.phylopic.org/images/35ff35a9-fa6c-496f-a279-22908ac7e7ec
+Accept: image/svg+xml
+
+
+# https://api.phylopic.org/nodes?build=441&embed_items=true&embed_primaryImage=true&filter_name=bufo%20bufo&page=0
+# https://www.phylopic.org/images/35ff35a9-fa6c-496f-a279-22908ac7e7ec
+# /images/35ff35a9-fa6c-496f-a279-22908ac7e7ec?build=441
+# https://images.phylopic.org/images/35ff35a9-fa6c-496f-a279-22908ac7e7ec/vector.svg
