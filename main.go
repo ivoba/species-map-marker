@@ -34,6 +34,7 @@ type PhyloPicResponse struct {
 			Title string `json:"title"`
 		} `json:"items"`
 	} `json:"_links"`
+	Build int `json:"build"`
 }
 
 // ensureFilesDir creates the files directory if it doesn't exist
@@ -157,7 +158,6 @@ func fetchPhyloPicData(species string) (*PhyloPicResponse, error) {
 	baseURL := "https://api.phylopic.org/images"
 	params := url.Values{}
 	params.Add("filter_name", species)
-	params.Add("build", "443")
 	params.Add("embed_items", "true")
 	params.Add("embed_primaryImage", "true")
 	params.Add("page", "0")
@@ -168,11 +168,11 @@ func fetchPhyloPicData(species string) (*PhyloPicResponse, error) {
 	// Create a client that follows redirects
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return nil // Allow up to 10 redirects by default
+			return nil // Allow redirects
 		},
 	}
 
-	// Create the request
+	// Create the initial request
 	req, err := http.NewRequest("GET", fullURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
@@ -188,6 +188,7 @@ func fetchPhyloPicData(species string) (*PhyloPicResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	// Read and parse the response
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %v", err)
@@ -196,6 +197,35 @@ func fetchPhyloPicData(species string) (*PhyloPicResponse, error) {
 	var phyloPicResp PhyloPicResponse
 	if err := json.Unmarshal(body, &phyloPicResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %v", err)
+	}
+
+	// Add the build number to subsequent requests
+	if phyloPicResp.Build > 0 {
+		params.Set("build", fmt.Sprintf("%d", phyloPicResp.Build))
+		fullURL = baseURL + "?" + params.Encode()
+		fmt.Printf("Making second request with build number %d: %s\n", phyloPicResp.Build, fullURL)
+
+		// Make a second request with the build number
+		req, err = http.NewRequest("GET", fullURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create second request: %v", err)
+		}
+		req.Header.Set("Accept", "application/vnd.phylopic.v2+json")
+
+		resp, err = client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make second request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		body, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read second response: %v", err)
+		}
+
+		if err := json.Unmarshal(body, &phyloPicResp); err != nil {
+			return nil, fmt.Errorf("failed to parse second response: %v", err)
+		}
 	}
 
 	return &phyloPicResp, nil

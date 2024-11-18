@@ -49,4 +49,4 @@ Then run with:
 - golang.org/x/text for text normalization
 
 ## Todo
-- get build number automatically
+- gorelease & action
