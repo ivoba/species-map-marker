@@ -1,7 +1,7 @@
 linters:
   enable:
     - gofmt
-    - golint
+    - revive  # replacement for golint
     - govet
     - errcheck
     - staticcheck
@@ -14,10 +14,10 @@ linters:
 run:
   timeout: 5m
   tests: false
-  skip-dirs:
-    - vendor
 
 issues:
+  exclude-dirs:
+    - vendor
   exclude-rules:
     - path: _test\.go
       linters:
@@ -27,7 +27,9 @@ issues:
   max-same-issues: 20
 
 output:
-  format: colored-line-number
+  formats:
+    - format: colored-line-number
+  sort-results: true
   print-issued-lines: true
   print-linter-name: true
 
@@ -39,8 +41,8 @@ linters-settings:
   govet:
     check-shadowing: true
 
-  golint:
-    min-confidence: 0.8
+  revive:
+    confidence: 0.8
 
   gofmt:
     simplify: true

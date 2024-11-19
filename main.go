@@ -1,18 +1,21 @@
 package main
 
 import (
+	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"unicode"
-	"net/http"
-	"io/ioutil"
-	"net/url"
-	"encoding/json"
-	"path/filepath"
-	"encoding/xml"
+
+	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
+
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +54,7 @@ func mergeSVGs(speciesSVGPath, outputPath string) error {
 	fmt.Printf("Species SVG path: %s\n", speciesSVGPath)
 
 	// Read species SVG
-	speciesSVGData, err := ioutil.ReadFile(speciesSVGPath)
+	speciesSVGData, err := os.ReadFile(speciesSVGPath)
 	if err != nil {
 		return fmt.Errorf("failed to read species SVG: %v", err)
 	}
@@ -78,8 +81,8 @@ func mergeSVGs(speciesSVGPath, outputPath string) error {
     </g>
 </svg>`, speciesSVG.Content)
 
-	// Write the combined SVG
-	if err := ioutil.WriteFile(outputPath, []byte(combinedSVG), 0644); err != nil {
+	// Write the combined SVG with more restrictive permissions
+	if err := os.WriteFile(outputPath, []byte(combinedSVG), 0600); err != nil {
 		return fmt.Errorf("failed to write combined SVG: %v", err)
 	}
 
@@ -109,7 +112,7 @@ func downloadSVG(url, species, uuid string) (string, error) {
 	// Create a client that follows redirects
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return nil
+			return nil // Allow redirects
 		},
 	}
 
@@ -134,7 +137,7 @@ func downloadSVG(url, species, uuid string) (string, error) {
 	}
 
 	// Read the response body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read SVG data: %v", err)
 	}
@@ -143,9 +146,8 @@ func downloadSVG(url, species, uuid string) (string, error) {
 	filename := fmt.Sprintf("%s_%s.svg", strings.ReplaceAll(species, " ", "_"), uuid)
 	filename = filepath.Join("files", filename)
 
-	// Write the file
-	err = ioutil.WriteFile(filename, body, 0644)
-	if err != nil {
+	// Write the file with more restrictive permissions
+	if err := os.WriteFile(filename, body, 0600); err != nil {
 		return "", fmt.Errorf("failed to write SVG file: %v", err)
 	}
 
@@ -189,7 +191,7 @@ func fetchPhyloPicData(species string) (*PhyloPicResponse, error) {
 	defer resp.Body.Close()
 
 	// Read and parse the response
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %v", err)
 	}
@@ -206,19 +208,19 @@ func fetchPhyloPicData(species string) (*PhyloPicResponse, error) {
 		fmt.Printf("Making second request with build number %d: %s\n", phyloPicResp.Build, fullURL)
 
 		// Make a second request with the build number
-		req, err = http.NewRequest("GET", fullURL, nil)
+		secondReq, err := http.NewRequest("GET", fullURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create second request: %v", err)
 		}
-		req.Header.Set("Accept", "application/vnd.phylopic.v2+json")
+		secondReq.Header.Set("Accept", "application/vnd.phylopic.v2+json")
 
-		resp, err = client.Do(req)
+		secondResp, err := client.Do(secondReq)
 		if err != nil {
 			return nil, fmt.Errorf("failed to make second request: %v", err)
 		}
-		defer resp.Body.Close()
+		defer secondResp.Body.Close()
 
-		body, err = ioutil.ReadAll(resp.Body)
+		body, err = io.ReadAll(secondResp.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read second response: %v", err)
 		}
@@ -241,15 +243,14 @@ func normalizeSpecies(s string) string {
 	s = strings.ToLower(s)
 
 	// Remove diacritics
-	t := transform.Chain(norm.NFD, transform.RemoveFunc(func(r rune) bool {
-		return unicode.Is(unicode.Mn, r)
-	}), norm.NFC)
-	result, _, _ := transform.String(t, s)
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	result, _, err := transform.String(t, s)
+	if err != nil {
+		return s // Return original string if transformation fails
+	}
 
 	// Replace multiple spaces with single space and trim
-	result = strings.Join(strings.Fields(result), " ")
-	
-	return result
+	return strings.Join(strings.Fields(result), " ")
 }
 
 func main() {
@@ -293,9 +294,9 @@ func main() {
 				for _, item := range resp.Links.Items {
 					uuid := extractUUID(item.Href)
 					vectorURL := getVectorURL(uuid)
-					fmt.Printf("Title: %s\nImage URL: %s\nUUID: %s\nVector SVG: %s\n", 
+					fmt.Printf("Title: %s\nImage URL: %s\nUUID: %s\nVector SVG: %s\n",
 						item.Title, item.Href, uuid, vectorURL)
-					
+
 					// Download the SVG file
 					speciesSVGPath, err := downloadSVG(vectorURL, normalizedSpecies, uuid)
 					if err != nil {
@@ -308,7 +309,7 @@ func main() {
 					if err := mergeSVGs(speciesSVGPath, outputPath); err != nil {
 						fmt.Printf("Error creating marker: %v\n", err)
 					}
-					
+
 					fmt.Println()
 				}
 			}
