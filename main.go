@@ -43,7 +43,8 @@ type PhyloPicResponse struct {
 // ensureFilesDir creates the files directory if it doesn't exist
 func ensureFilesDir() error {
 	filesDir := "files"
-	if err := os.MkdirAll(filesDir, 0755); err != nil {
+	var err error
+	if err = os.MkdirAll(filesDir, 0755); err != nil {
 		return fmt.Errorf("failed to create files directory: %v", err)
 	}
 	return nil
@@ -54,7 +55,9 @@ func mergeSVGs(speciesSVGPath, outputPath string) error {
 	fmt.Printf("Species SVG path: %s\n", speciesSVGPath)
 
 	// Read species SVG
-	speciesSVGData, err := os.ReadFile(speciesSVGPath)
+	var speciesSVGData []byte
+	var err error
+	speciesSVGData, err = os.ReadFile(speciesSVGPath)
 	if err != nil {
 		return fmt.Errorf("failed to read species SVG: %v", err)
 	}
@@ -83,7 +86,8 @@ func mergeSVGs(speciesSVGPath, outputPath string) error {
 </svg>`, speciesSVG.Content)
 
 	// Write the combined SVG with more restrictive permissions
-	if err := os.WriteFile(outputPath, []byte(combinedSVG), 0600); err != nil {
+	err = os.WriteFile(outputPath, []byte(combinedSVG), 0600)
+	if err != nil {
 		return fmt.Errorf("failed to write combined SVG: %v", err)
 	}
 
@@ -147,8 +151,9 @@ func downloadSVG(url, species, uuid string) (string, error) {
 	filename := fmt.Sprintf("%s_%s.svg", strings.ReplaceAll(species, " ", "_"), uuid)
 	filename = filepath.Join("files", filename)
 
-	// Write the file with more restrictive permissions
-	if err := os.WriteFile(filename, body, 0600); err != nil {
+	// Save the SVG file
+	err = os.WriteFile(filename, body, 0600)
+	if err != nil {
 		return "", fmt.Errorf("failed to write SVG file: %v", err)
 	}
 
@@ -198,8 +203,9 @@ func fetchPhyloPicData(species string) (*PhyloPicResponse, error) {
 	}
 
 	var phyloPicResp PhyloPicResponse
-	if err := json.Unmarshal(body, &phyloPicResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %v", err)
+	err = json.Unmarshal(body, &phyloPicResp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON response: %v", err)
 	}
 
 	// Add the build number to subsequent requests
@@ -209,13 +215,15 @@ func fetchPhyloPicData(species string) (*PhyloPicResponse, error) {
 		fmt.Printf("Making second request with build number %d: %s\n", phyloPicResp.Build, fullURL)
 
 		// Make a second request with the build number
-		secondReq, err := http.NewRequest("GET", fullURL, nil)
+		var secondReq *http.Request
+		secondReq, err = http.NewRequest("GET", fullURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create second request: %v", err)
 		}
 		secondReq.Header.Set("Accept", "application/vnd.phylopic.v2+json")
 
-		secondResp, err := client.Do(secondReq)
+		var secondResp *http.Response
+		secondResp, err = client.Do(secondReq)
 		if err != nil {
 			return nil, fmt.Errorf("failed to make second request: %v", err)
 		}
@@ -226,7 +234,8 @@ func fetchPhyloPicData(species string) (*PhyloPicResponse, error) {
 			return nil, fmt.Errorf("failed to read second response: %v", err)
 		}
 
-		if err := json.Unmarshal(body, &phyloPicResp); err != nil {
+		err = json.Unmarshal(body, &phyloPicResp)
+		if err != nil {
 			return nil, fmt.Errorf("failed to parse second response: %v", err)
 		}
 	}
@@ -299,7 +308,8 @@ func main() {
 						item.Title, item.Href, uuid, vectorURL)
 
 					// Download the SVG file
-					speciesSVGPath, err := downloadSVG(vectorURL, normalizedSpecies, uuid)
+					var speciesSVGPath string
+					speciesSVGPath, err = downloadSVG(vectorURL, normalizedSpecies, uuid)
 					if err != nil {
 						fmt.Printf("Error downloading SVG: %v\n", err)
 						continue
@@ -307,7 +317,8 @@ func main() {
 
 					// Create combined marker
 					outputPath := filepath.Join("files", fmt.Sprintf("%s_marker.svg", strings.ReplaceAll(normalizedSpecies, " ", "_")))
-					if err := mergeSVGs(speciesSVGPath, outputPath); err != nil {
+					err = mergeSVGs(speciesSVGPath, outputPath)
+					if err != nil {
 						fmt.Printf("Error creating marker: %v\n", err)
 					}
 
