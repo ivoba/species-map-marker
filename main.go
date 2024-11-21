@@ -61,7 +61,8 @@ func mergeSVGs(speciesSVGPath, outputPath string) error {
 
 	// Parse species SVG
 	var speciesSVG SVG
-	if err := xml.Unmarshal(speciesSVGData, &speciesSVG); err != nil {
+	err = xml.Unmarshal(speciesSVGData, &speciesSVG)
+	if err != nil {
 		return fmt.Errorf("failed to parse species SVG: %v", err)
 	}
 
