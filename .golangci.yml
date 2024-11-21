@@ -39,7 +39,11 @@ linters-settings:
     check-blank: true
 
   govet:
-    check-shadowing: true
+    enable:
+      - shadow
+    settings:
+      shadow:
+        strict: true
 
   revive:
     confidence: 0.8
@@ -49,4 +53,4 @@ linters-settings:
 
   gosec:
     excludes:
-      - G104 # Audit errors not checked
+      - "G104" # Audit errors not checked
