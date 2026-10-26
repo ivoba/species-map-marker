@@ -49,4 +49,6 @@ Then run with:
 - golang.org/x/text for text normalization
 
 ## Todo
-- gorelease & action
+- sign binary: https://www.kencochrane.com/2020/08/01/build-and-sign-golang-binaries-for-macos-with-github-actions/
+  https://goreleaser.com/customization/notarize/
+  https://github.com/mitchellh/gon
