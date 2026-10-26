@@ -1,0 +1,56 @@
+linters:
+  enable:
+    - gofmt
+    - revive  # replacement for golint
+    - govet
+    - errcheck
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unconvert
+    - misspell
+    - gosec
+
+run:
+  timeout: 5m
+  tests: false
+
+issues:
+  exclude-dirs:
+    - vendor
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+
+  max-same-issues: 20
+
+output:
+  formats:
+    - format: colored-line-number
+  sort-results: true
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  govet:
+    enable:
+      - shadow
+    settings:
+      shadow:
+        strict: true
+
+  revive:
+    confidence: 0.8
+
+  gofmt:
+    simplify: true
+
+  gosec:
+    excludes:
+      - "G104" # Audit errors not checked
